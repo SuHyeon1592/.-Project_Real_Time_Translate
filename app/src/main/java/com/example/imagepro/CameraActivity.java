@@ -1,6 +1,7 @@
 package com.example.imagepro;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -38,7 +39,7 @@ import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 
 public class CameraActivity extends Activity implements CameraBridgeViewBase.CvCameraViewListener2 {
-    private static final String TAG = "MainActivity";
+    private static final String TAG = "CameraActivity";
 
     private Mat mRgba;
     private Mat mGray;
@@ -62,7 +63,7 @@ public class CameraActivity extends Activity implements CameraBridgeViewBase.CvC
         public void onManagerConnected(int status) {
             switch (status) {
                 case LoaderCallbackInterface.SUCCESS: {
-                    Log.i(TAG, "OpenCv is loaded");
+                    Log.i(TAG, "OpenCV is loaded");
                     mOpenCvCameraView.enableView();
                     break;
                 }
@@ -96,10 +97,10 @@ public class CameraActivity extends Activity implements CameraBridgeViewBase.CvC
         mOpenCvCameraView.setVisibility(SurfaceView.VISIBLE);
         mOpenCvCameraView.setCvCameraViewListener(this);
 
-        // Load text recognition model
+        // Initialize the TextRecognizer
         textRecognizer = TextRecognition.getClient(new DevanagariTextRecognizerOptions.Builder().build());
 
-        textview=findViewById(R.id.textview);
+        textview = findViewById(R.id.textview);
         textview.setVisibility(View.GONE);
 
         take_picture_button = findViewById(R.id.take_picture_button);
@@ -107,12 +108,12 @@ public class CameraActivity extends Activity implements CameraBridgeViewBase.CvC
             @Override
             public boolean onTouch(View v, MotionEvent event) {
                 if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                    take_picture_button.setColorFilter(Color.DKGRAY);
+                    take_picture_button.setColorFilter(Color.DKGRAY); // Change color filter on touch down
                     return true;
                 }
                 if (event.getAction() == MotionEvent.ACTION_UP) {
-                    take_picture_button.setColorFilter(null); // Reset the color filter
                     if (Camera_or_recognizeText.equals("Camera")) {
+                        take_picture_button.setColorFilter(null); // Reset color filter
                         Mat a = mRgba.t();
                         Core.flip(a, mRgba, 1);
                         a.release();
@@ -120,6 +121,13 @@ public class CameraActivity extends Activity implements CameraBridgeViewBase.CvC
                         Utils.matToBitmap(mRgba, bitmap);
                         mOpenCvCameraView.disableView();
                         Camera_or_recognizeText = "recognizeText";
+                    } else {
+                        take_picture_button.setColorFilter(Color.WHITE); // Reset the color filter
+                        textview.setVisibility(View.GONE);
+                        current_image.setVisibility(View.GONE);
+                        mOpenCvCameraView.enableView();
+                        textview.setText(""); // Corrected textView to textview
+                        Camera_or_recognizeText = "Camera";
                     }
                     return true;
                 }
@@ -140,24 +148,22 @@ public class CameraActivity extends Activity implements CameraBridgeViewBase.CvC
                     if (Camera_or_recognizeText.equals("recognizeText")) {
                         textview.setVisibility(View.VISIBLE);
                         InputImage image = InputImage.fromBitmap(bitmap, 0);
-                        Task<Text> result = textRecognizer.process(image)
+                        @SuppressLint("ClickableViewAccessibility") Task<Text> result = textRecognizer.process(image)
                                 .addOnSuccessListener(new OnSuccessListener<Text>() {
                                     @Override
                                     public void onSuccess(Text text) {
-
                                         textview.setText(text.getText());
-                                        // Handle successful text recognition
-                                        // For example, display the recognized text
-                                        Log.d("CameraActivity","Out" + text.getText());
+                                        Log.d(TAG, "Recognized text: " + text.getText());
                                     }
                                 })
                                 .addOnFailureListener(new OnFailureListener() {
                                     @Override
                                     public void onFailure(@NonNull Exception e) {
-                                        // Handle the error
                                         Log.e(TAG, "Text recognition failed", e);
                                     }
                                 });
+                    } else {
+                        Toast.makeText(CameraActivity.this, "Please take a picture", Toast.LENGTH_LONG).show();
                     }
                     return true;
                 }
@@ -175,13 +181,11 @@ public class CameraActivity extends Activity implements CameraBridgeViewBase.CvC
                 }
                 if (event.getAction() == MotionEvent.ACTION_UP) {
                     show_image_button.setColorFilter(Color.WHITE); // Reset the color filter
-                    // Add action for showing the image
-                    if(Camera_or_recognizeText=="recognizeText"){
-
-                    }
-                    else{
-                        Toast.makeText(CameraActivity.this, "Please take a picture",
-                                Toast.LENGTH_LONG).show();
+                    if (bitmap != null) {
+                        current_image.setImageBitmap(bitmap); // Show the image
+                        current_image.setVisibility(View.VISIBLE);
+                    } else {
+                        Toast.makeText(CameraActivity.this, "No image to show", Toast.LENGTH_LONG).show();
                     }
                     return true;
                 }
@@ -194,10 +198,10 @@ public class CameraActivity extends Activity implements CameraBridgeViewBase.CvC
     protected void onResume() {
         super.onResume();
         if (OpenCVLoader.initDebug()) {
-            Log.d(TAG, "Opencv initialization is done");
+            Log.d(TAG, "OpenCV initialization is done");
             mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
         } else {
-            Log.d(TAG, "Opencv is not loaded. try again");
+            Log.d(TAG, "OpenCV is not loaded. Trying again...");
             OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_4_0, this, mLoaderCallback);
         }
     }
@@ -234,7 +238,6 @@ public class CameraActivity extends Activity implements CameraBridgeViewBase.CvC
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
         mRgba = inputFrame.rgba();
         mGray = inputFrame.gray();
-
         return mRgba;
     }
 }
