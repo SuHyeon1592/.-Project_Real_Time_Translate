@@ -32,7 +32,7 @@
         <ImageView
             android:layout_width="60dp"
             android:layout_height="60dp"
-            android:id="@+id/tranlate_button"
+            android:id="@+id/translate_button"
             android:src="@drawable/translate_button_image"
             android:layout_gravity="center"
             android:layout_marginRight="60dp"/>
